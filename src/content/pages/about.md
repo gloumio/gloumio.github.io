@@ -1,6 +1,6 @@
 ---
 title: "About"
-description: "About Giorgi Mamaladze / GetcM."
+description: "About Giorgi Mamaladze / GLouM."
 ---
 
 Hello there, 
