@@ -1,0 +1,56 @@
+@import "@fontsource-variable/source-serif-4";
+@import "tailwindcss";
+@import "./theme.css";
+@import "./typography.css";
+@import "rehype-callouts/theme/obsidian";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@layer base {
+  * {
+    @apply border-border outline-accent/75;
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-muted) transparent;
+  }
+
+  a,
+  button,
+  #main-content {
+    @apply outline-accent outline-offset-1 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/*
+ * Main site width.
+ * Approximately 94% of the screen on normal displays,
+ * but prevents ridiculous stretching on ultrawide monitors.
+ */
+@utility max-w-app {
+  max-width: 1800px;
+}
+
+@utility app-layout {
+  width: 94vw;
+  max-width: 1800px;
+  margin-inline: auto;
+}
+
+/* Give phones a little safer breathing room */
+@media (max-width: 640px) {
+  .app-layout {
+    width: calc(100% - 1.5rem);
+  }
+}
+
+@utility active-nav {
+  @apply underline decoration-wavy decoration-2 underline-offset-8;
+}
+
+:target {
+  scroll-margin-block: 1rem;
+}

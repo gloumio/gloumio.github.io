@@ -1,0 +1,306 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+import "@pagefind/default-ui/css/ui.css";
+
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+
+import { getAssetPath } from "@/utils/withBase";
+import config from "@/config";
+
+const locale = Astro.currentLocale ?? config.site.lang;
+
+// Redirect to 404 if search is disabled.
+const notFoundUrl = getRelativeLocaleUrl(locale, "404");
+
+if (config.features.search !== "pagefind" && notFoundUrl) {
+  return Astro.rewrite(notFoundUrl);
+}
+
+const backUrl = getRelativeLocaleUrl(locale, "search");
+
+const pagefindBundlePath = getAssetPath("pagefind/");
+---
+
+<Layout
+  title={`Search | ${config.site.title}`}
+  description="Search writeups, research notes, and pixel art posts."
+>
+  <Header />
+
+  <main id="main-content" class="app-layout pt-10 pb-12">
+    <div class="mx-auto max-w-5xl">
+
+      <!-- PAGE HEADER -->
+      <header class="border-border border-b pb-7">
+        <h1 class="font-display text-4xl font-semibold sm:text-5xl">
+          Search
+        </h1>
+
+        <p class="text-muted-foreground mt-3 leading-7">
+          Search writeups, research notes, and pixel art posts.
+        </p>
+      </header>
+
+      <!-- SEARCH -->
+      <section class="mt-8">
+        <div
+          id="pagefind-search"
+          transition:persist
+          data-backurl={backUrl}
+          data-bundle-path={pagefindBundlePath}
+        >
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  function initSearch() {
+    const pageFindSearch: HTMLElement | null =
+      document.querySelector("#pagefind-search");
+
+    if (!pageFindSearch) return;
+
+    const bundlePath = pageFindSearch.dataset?.bundlePath;
+
+    if (!bundlePath) return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    const onIdle =
+      window.requestIdleCallback ||
+      ((cb: IdleRequestCallback) => setTimeout(cb, 1));
+
+    onIdle(async () => {
+      // @ts-expect-error — Missing types for @pagefind/default-ui package.
+      const { PagefindUI } = await import("@pagefind/default-ui");
+
+      const search = new PagefindUI({
+        element: "#pagefind-search",
+        bundlePath,
+        showImages: false,
+        showSubResults: true,
+
+        processTerm: function (term: string) {
+          params.set("q", term);
+
+          history.replaceState(
+            history.state,
+            "",
+            "?" + params.toString()
+          );
+
+          const backUrl =
+            pageFindSearch.dataset?.backurl ??
+            window.location.pathname;
+
+          sessionStorage.setItem(
+            "backUrl",
+            `${backUrl}?${params.toString()}`
+          );
+
+          return term;
+        },
+      });
+
+      // Trigger search from URL, for example:
+      // /search/?q=hackthebox
+      const query = params.get("q");
+
+      if (query) {
+        search.triggerSearch(query);
+      }
+
+      const searchInput =
+        document.querySelector<HTMLInputElement>(
+          ".pagefind-ui__search-input"
+        );
+
+      const clearButton =
+        document.querySelector<HTMLButtonElement>(
+          ".pagefind-ui__search-clear"
+        );
+
+      searchInput?.addEventListener(
+        "input",
+        resetSearchParam
+      );
+
+      clearButton?.addEventListener(
+        "click",
+        resetSearchParam
+      );
+
+      function resetSearchParam(e: Event) {
+        const target = e.target as HTMLInputElement;
+
+        if (target?.value?.trim() === "") {
+          history.replaceState(
+            history.state,
+            "",
+            window.location.pathname
+          );
+        }
+      }
+    });
+  }
+
+  document.addEventListener("astro:after-swap", () => {
+    const pagefindSearch =
+      document.querySelector("#pagefind-search");
+
+    // Avoid initializing Pagefind twice.
+    if (
+      pagefindSearch &&
+      pagefindSearch.querySelector("form")
+    ) {
+      return;
+    }
+
+    initSearch();
+  });
+
+  initSearch();
+</script>
+
+<style is:global>
+  #pagefind-search {
+    --pagefind-ui-font: var(--font-app);
+    --pagefind-ui-text: var(--foreground);
+    --pagefind-ui-background: var(--background);
+    --pagefind-ui-border: var(--border);
+    --pagefind-ui-primary: var(--accent);
+    --pagefind-ui-tag: var(--background);
+
+    --pagefind-ui-border-radius: 0;
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-image-border-radius: 0;
+    --pagefind-ui-image-box-ratio: 3 / 2;
+  }
+
+  /* Search icon inside input */
+  #pagefind-search form::before {
+    background-color: var(--muted-foreground);
+  }
+
+  /* Search input */
+  #pagefind-search .pagefind-ui__search-input {
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-weight: 400;
+  }
+
+  #pagefind-search .pagefind-ui__search-input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  #pagefind-search .pagefind-ui__search-input:focus {
+    border-color: var(--accent);
+    box-shadow: none;
+  }
+
+  #pagefind-search .pagefind-ui__search-input:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Clear button */
+  #pagefind-search .pagefind-ui__search-clear {
+    color: var(--muted-foreground);
+  }
+
+  #pagefind-search .pagefind-ui__search-clear:hover {
+    color: var(--foreground);
+  }
+
+  /* Result count */
+  #pagefind-search .pagefind-ui__message {
+    color: var(--muted-foreground);
+    margin-top: 1.5rem;
+  }
+
+  /* Individual result */
+  #pagefind-search .pagefind-ui__result {
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  #pagefind-search .pagefind-ui__result:last-of-type {
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Result title */
+  #pagefind-search .pagefind-ui__result-title {
+    margin-bottom: 0.5rem;
+  }
+
+  #pagefind-search .pagefind-ui__result-title a {
+    color: var(--foreground);
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.3;
+
+    text-decoration: none;
+    outline-offset: 2px;
+    outline-color: var(--accent);
+  }
+
+  #pagefind-search .pagefind-ui__result-title a:hover {
+    color: var(--accent);
+  }
+
+  #pagefind-search .pagefind-ui__result-title a:focus-visible,
+  #pagefind-search .pagefind-ui__search-clear:focus-visible {
+    outline-width: 2px;
+    outline-style: dashed;
+  }
+
+  /* Result text */
+  #pagefind-search .pagefind-ui__result-excerpt {
+    color: var(--muted-foreground);
+    line-height: 1.7;
+  }
+
+  /* Search-term highlighting — replaces the bright yellow default */
+  #pagefind-search mark {
+    background: color-mix(
+      in srgb,
+      var(--accent) 25%,
+      transparent
+    );
+
+    color: var(--foreground);
+    padding-inline: 0.1em;
+  }
+
+  /* Nested heading results */
+  #pagefind-search .pagefind-ui__result-nested {
+    margin-top: 1rem;
+  }
+
+  #pagefind-search .pagefind-ui__result-nested a {
+    color: var(--foreground);
+  }
+
+  #pagefind-search .pagefind-ui__result-nested a:hover {
+    color: var(--accent);
+  }
+
+  #pagefind-search
+    .pagefind-ui__result-nested
+    .pagefind-ui__result-link::before {
+    font-family: system-ui;
+    color: var(--accent);
+  }
+</style>

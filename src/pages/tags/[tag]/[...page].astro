@@ -1,0 +1,171 @@
+---
+import { getCollection } from "astro:content";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import type { GetStaticPathsOptions } from "astro";
+
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import HomeEntry from "@/components/HomeEntry.astro";
+import Pagination from "@/components/Pagination.astro";
+
+import { getUniqueTags } from "@/utils/getUniqueTags";
+import { getSortedPosts } from "@/utils/getSortedPosts";
+import { slugifyAll } from "@/utils/slugify";
+
+import config from "@/config";
+
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
+  const posts = await getCollection("posts", ({ data }) => !data.draft);
+  const tags = getUniqueTags(posts);
+
+  return tags.flatMap(({ tag, tagName }) => {
+    const tagPosts = getSortedPosts(
+      posts.filter(({ data }) =>
+        slugifyAll(data.tags).includes(tag)
+      )
+    );
+
+    return paginate(tagPosts, {
+      params: { tag },
+      props: { tagName },
+      pageSize: config.posts.perPage,
+    });
+  });
+}
+
+const { page, tagName } = Astro.props;
+
+const locale = Astro.currentLocale ?? config.site.lang;
+
+/*
+ * Normalize Windows paths so folder detection works.
+ */
+const getPostPath = (post: (typeof page.data)[number]) =>
+  (post.filePath ?? "").replaceAll("\\", "/");
+
+/*
+ * Determine what kind of post this is.
+ */
+const getPostType = (post: (typeof page.data)[number]) => {
+  const path = getPostPath(post);
+
+  if (path.includes("src/content/posts/writeups/")) {
+    return "WRITEUP";
+  }
+
+  if (path.includes("src/content/posts/research/")) {
+    return "RESEARCH";
+  }
+
+  if (path.includes("src/content/posts/pixel-art/")) {
+    return "PIXEL ART";
+  }
+
+  return "POST";
+};
+
+const formatDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}.${month}.${day}`;
+};
+
+const postHref = (id: string) => {
+  const slug = id.replace(/\.(md|mdx)$/, "");
+
+  return getRelativeLocaleUrl(
+    locale,
+    `posts/${slug}`
+  );
+};
+---
+
+<Layout
+  title={`#${tagName} | ${config.site.title}`}
+  description={`Posts tagged with ${tagName}.`}
+>
+  <Header />
+
+  <main
+    id="main-content"
+    class="app-layout pt-10 pb-12"
+  >
+    <section class="border-border border">
+
+      <!-- TAG HEADER -->
+      <div
+        class="border-border border-b p-6 sm:p-8"
+      >
+        <div
+          class="text-muted-foreground mb-3 text-sm"
+        >
+          TAG
+        </div>
+
+        <div
+          class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <h1
+              class="font-display text-4xl font-semibold sm:text-5xl"
+            >
+              #{tagName}
+            </h1>
+
+            <p
+              class="text-muted-foreground mt-4 leading-7"
+            >
+              Posts tagged with #{tagName}.
+            </p>
+          </div>
+
+          <div
+            class="text-muted-foreground text-sm"
+          >
+            {page.total}
+            {page.total === 1 ? " post" : " posts"}
+          </div>
+        </div>
+      </div>
+
+      <!-- TAGGED POSTS -->
+      <div>
+        {
+          page.data.length > 0 ? (
+            page.data.map(post => (
+              <HomeEntry
+                title={post.data.title}
+                description={post.data.description}
+                date={formatDate(post.data.pubDatetime)}
+                type={getPostType(post)}
+                tags={post.data.tags}
+                href={postHref(post.id)}
+                image={post.data.image}
+              />
+            ))
+          ) : (
+            <p
+              class="text-muted-foreground p-6 sm:p-8"
+            >
+              No posts with this tag.
+            </p>
+          )
+        }
+      </div>
+
+    </section>
+
+    {
+      page.lastPage > 1 && (
+        <div class="mt-8">
+          <Pagination {page} />
+        </div>
+      )
+    }
+  </main>
+
+  <Footer />
+</Layout>

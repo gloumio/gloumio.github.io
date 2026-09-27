@@ -1,0 +1,66 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  date: string;
+  type: string;
+  tags?: string[];
+  href?: string;
+  image?: string;
+}
+
+const {
+  title,
+  description,
+  date,
+  type,
+  tags = [],
+  href = "#",
+  image,
+} = Astro.props;
+---
+
+<a
+  href={href}
+  class="group border-border grid gap-4 border-t p-4 transition hover:bg-muted/20 sm:grid-cols-[110px_minmax(0,1fr)]"
+>
+  {
+    image && (
+      <div class="border-border aspect-[4/3] overflow-hidden border">
+        <img
+          src={image}
+          alt=""
+          class="h-full w-full object-cover"
+          style="image-rendering: pixelated;"
+        />
+      </div>
+    )
+  }
+
+  <div class:list={[{ "sm:col-span-2": !image }]}>
+    <div
+      class="text-muted-foreground mb-2 flex items-center justify-between gap-3 text-xs"
+    >
+      <span>{date} / {type}</span>
+      <span class="text-accent transition-transform group-hover:translate-x-1">
+        →
+      </span>
+    </div>
+
+    <h3 class="font-display text-xl font-semibold leading-tight">
+      {title}
+    </h3>
+
+    <p class="text-muted-foreground mt-2 text-sm leading-6">
+      {description}
+    </p>
+
+    {
+      tags.length > 0 && (
+        <div class="text-muted-foreground mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          {tags.map(tag => <span>#{tag}</span>)}
+        </div>
+      )
+    }
+  </div>
+</a>
