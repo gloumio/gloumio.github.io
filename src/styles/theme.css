@@ -8,7 +8,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --font-app: var(--font-google-sans-code);
-  --font-display: "Source Serif 4 Variable", Georgia, serif;
+  --font-display: "Bitcount Single Variable", monospace;
 }
 
 /* Dark-only theme */
